@@ -7,11 +7,11 @@ const int PAN_PIN  = 9;
 const int TILT_PIN = 10;
 
 const int CENTRE   = 90;   // boot position
-const int STEP     = 3;    // degrees per command — tune this for speed
+const int STEP     = 6;    // degrees per command — tune this for speed
 
 // Clamp helper — keeps servos inside 0–180°
 int clamp(int val) {
-  if (val < 0)   return 0;s
+  if (val < 0)   return 0;
   if (val > 180) return 180;
   return val;
 }

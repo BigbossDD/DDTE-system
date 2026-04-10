@@ -105,6 +105,7 @@ def run_T():
         if ser and ser.is_open:
             for cmd in commands:
                 ser.write(cmd)
+                print(f"[T]  Sent command: {cmd}")
 
         print(f"[T]  conf={conf:.2%}  "
               f"err=({err_x:+d},{err_y:+d})  "
