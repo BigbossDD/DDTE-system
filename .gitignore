@@ -1,0 +1,30 @@
+*.zip
+
+# --- ML / YOLO Specific ---
+runs/
+datasets/
+*.pt
+*.onnx
+*.engine
+*.ncnn
+*.weights
+predict/
+
+# --- Python Environment ---
+__pycache__/
+.env
+venv/
+.conda/
+*.pyc
+
+# --- IDEs and OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Weights (if you want to allow small ones, omit this, but usually best to ignore) ---
+weights/
+
+*.JPEG
+*.txt
