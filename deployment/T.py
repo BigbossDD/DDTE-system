@@ -14,6 +14,9 @@ Command protocol (single ASCII byte per command):
 
 Multiple commands can be sent per frame (e.g. b'R' then b'U').
 The Arduino handles each byte independently.
+----------------------------
+a diffrent method of movement we ended picking
+
 """
 
 import time
@@ -27,7 +30,16 @@ from config import (
     DEAD_ZONE_X, DEAD_ZONE_Y,
     track_queue,
 )
+# ── Control parameters ───────────────────────────
 
+PAN_MIN, PAN_MAX = 0, 180
+TILT_MIN, TILT_MAX = 0, 180
+
+Kp = 0.08   # tuning parameter (start small)
+
+# current servo angles (state)
+pan_angle = 90
+tilt_angle = 90
 
 # ── Serial helpers ────────────────────────────────────────────
 
@@ -46,34 +58,53 @@ def _open_serial(port: str, baud: int):
 
 # ── Direction logic ───────────────────────────────────────────
 
-def _compute_commands(err_x: int, err_y: int) -> list:
-    """
-    Convert pixel error (drone centre vs frame centre) into
-    a list of single-byte direction commands.
+# def _compute_commands(err_x: int, err_y: int) -> list:
+#     """
+#     Convert pixel error (drone centre vs frame centre) into
+#     a list of single-byte direction commands.
 
-    Dead-zone filtering prevents jitter when the drone is
-    already close to the frame centre.
-    """
-    cmds = []
+#     Dead-zone filtering prevents jitter when the drone is
+#     already close to the frame centre.
+#     """
+#     cmds = []
 
-    # pan (horizontal)
-    if err_x > DEAD_ZONE_X:
-        cmds.append(b'R')       # drone is right of centre → pan right
-    elif err_x < -DEAD_ZONE_X:
-        cmds.append(b'L')       # drone is left  of centre → pan left
+#     # pan (horizontal)
+#     if err_x > DEAD_ZONE_X:
+#         cmds.append(b'R')       # drone is right of centre → pan right
+#     elif err_x < -DEAD_ZONE_X:
+#         cmds.append(b'L')       # drone is left  of centre → pan left
 
-    # tilt (vertical)
-    if err_y > DEAD_ZONE_Y:
-        cmds.append(b'D')       # drone is below centre    → tilt down
-    elif err_y < -DEAD_ZONE_Y:
-        cmds.append(b'U')       # drone is above centre    → tilt up
+#     # tilt (vertical)
+#     if err_y > DEAD_ZONE_Y:
+#         cmds.append(b'D')       # drone is below centre    → tilt down
+#     elif err_y < -DEAD_ZONE_Y:
+#         cmds.append(b'U')       # drone is above centre    → tilt up
 
-    # within dead-zone on both axes → hold position
-    if not cmds:
-        cmds.append(b'S')
+#     # within dead-zone on both axes → hold position
+#     if not cmds:
+#         cmds.append(b'S')
 
-    return cmds
+#     return cmds
+##########################################
 
+#new method of movement : 
+def _compute_angles(err_x: int, err_y: int):
+    global pan_angle, tilt_angle
+
+    # proportional movement
+    MAX_STEP = 5  # max degrees per frame
+
+    delta_pan  = max(-MAX_STEP, min(MAX_STEP, Kp * err_x))
+    delta_tilt = max(-MAX_STEP, min(MAX_STEP, Kp * err_y))
+    # update angles
+    pan_angle  += delta_pan
+    tilt_angle += delta_tilt
+
+    # clamp to servo limits
+    pan_angle  = max(PAN_MIN, min(PAN_MAX, pan_angle))
+    tilt_angle = max(TILT_MIN, min(TILT_MAX, tilt_angle))
+
+    return int(pan_angle), int(tilt_angle)
 
 # ── Main loop ─────────────────────────────────────────────────
 
@@ -99,14 +130,14 @@ def run_T():
         err_x = drone_cx - fc_x    # + → drone is right of centre
         err_y = drone_cy - fc_y    # + → drone is below  centre
 
-        commands = _compute_commands(err_x, err_y)
+        pan, tilt = _compute_angles(err_x, err_y)
 
         # send to Arduino
         if ser and ser.is_open:
-            for cmd in commands:
-                ser.write(cmd)
-                print(f"[T]  Sent command: {cmd}")
+            msg = f"{pan},{tilt}\n"
+            ser.write(msg.encode())
+            print(f"[T] Sent: {msg.strip()}")
 
         print(f"[T]  conf={conf:.2%}  "
-              f"err=({err_x:+d},{err_y:+d})  "
-              f"cmds={[c.decode() for c in commands]}")
+            f"err=({err_x:+d},{err_y:+d})  "
+            f"angles=({pan},{tilt})")
