@@ -54,12 +54,12 @@ def run_T():
         err_y = cy - cy0
 
         # convert to servo targets (VERY SIMPLE)
-        pan = 90 + (err_x * 0.08)
-        tilt = 90 + (err_y * 0.08)
+        pan = 90 + (err_x * 0.05)
+        tilt = 90 + (err_y * 0.05)
 
         # clamp safe range
-        pan = max(20, min(160, int(pan)))
-        tilt = max(20, min(140, int(tilt)))
+        pan = max(10, min(170, int(pan)))
+        tilt = max(10, min(160, int(tilt)))
 
         now = time.time()
         if ser and ser.is_open and now - last_send > SEND_INTERVAL:
