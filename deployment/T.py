@@ -32,15 +32,21 @@ from config import (
 )
 # ── Control parameters ───────────────────────────
 
-PAN_MIN, PAN_MAX = 0, 180
-TILT_MIN, TILT_MAX = 0, 180
+PAN_MIN, PAN_MAX = 20, 160
+TILT_MIN, TILT_MAX = 20, 140
 
-Kp = 0.08   # tuning parameter (start small)
+Kp = 0.04   # tuning parameter (start small)
 
 # current servo angles (state)
 pan_angle = 90
 tilt_angle = 90
 
+last_send_time = 0
+SEND_INTERVAL = 0.05   # 20 Hz 
+
+alpha = 0.2
+smooth_cx = None
+smooth_cy = None
 # ── Serial helpers ────────────────────────────────────────────
 
 def _open_serial(port: str, baud: int):
@@ -126,12 +132,33 @@ def run_T():
         drone_cx: int   = data["cx"]
         drone_cy: int   = data["cy"]
         conf:     float = data["confidence"]
+        if conf < 0.25:
+            continue
+                
+        if smooth_cx is None:
+            smooth_cx = drone_cx
+            smooth_cy = drone_cy
+        else:
+            smooth_cx = alpha * drone_cx + (1 - alpha) * smooth_cx
+            smooth_cy = alpha * drone_cy + (1 - alpha) * smooth_cy
 
-        err_x = drone_cx - fc_x    # + → drone is right of centre
-        err_y = drone_cy - fc_y    # + → drone is below  centre
+        err_x = int(smooth_cx - fc_x)
+        err_y = int(smooth_cy - fc_y)
+        #err_x = drone_cx - fc_x    # + → drone is right of centre
+        #err_y = drone_cy - fc_y    # + → drone is below  centre
 
+        if abs(err_x) < DEAD_ZONE_X:
+            err_x = 0
+        if abs(err_y) < DEAD_ZONE_Y:
+            err_y = 0
+        
         pan, tilt = _compute_angles(err_x, err_y)
-
+        
+        now = time.time()
+        if now - last_send_time < SEND_INTERVAL:
+            continue
+        last_send_time = now
+        
         # send to Arduino
         if ser and ser.is_open:
             msg = f"{pan},{tilt}\n"
