@@ -1,24 +1,21 @@
 #include <Servo.h>
 
-Servo panServo;
-Servo tiltServo;
+Servo servoPan;
+Servo servoTilt;
 
-const int PAN_PIN  = 9;
-const int TILT_PIN = 10;
-
-int panPos  = 90;
-int tiltPos = 90;
+int pan = 70;
+int tilt = 40;
 
 String input = "";
 
 void setup() {
-  panServo.attach(PAN_PIN);
-  tiltServo.attach(TILT_PIN);
-
-  panServo.write(panPos);
-  tiltServo.write(tiltPos);
-
   Serial.begin(9600);
+
+  servoPan.attach(9);
+  servoTilt.attach(10);
+
+  servoPan.write(pan);
+  servoTilt.write(tilt);
 }
 
 void loop() {
@@ -26,27 +23,26 @@ void loop() {
     char c = Serial.read();
 
     if (c == '\n') {
-      // parse "pan,tilt"
-      int commaIndex = input.indexOf(',');
-
-      if (commaIndex > 0) {
-        int newPan  = input.substring(0, commaIndex).toInt();
-        int newTilt = input.substring(commaIndex + 1).toInt();
-
-        // clamp
-        newPan  = constrain(newPan,  0, 180);
-        newTilt = constrain(newTilt, 0, 180);
-
-        panServo.write(newPan);
-        tiltServo.write(newTilt);
-
-        Serial.print("Pan: "); Serial.print(newPan);
-        Serial.print(" | Tilt: "); Serial.println(newTilt);
-      }
-
-      input = "";  // reset buffer
+      processCommand(input);
+      input = "";
     } else {
       input += c;
     }
   }
+}
+
+void processCommand(String cmd) {
+  int commaIndex = cmd.indexOf(',');
+
+  if (commaIndex == -1) return;
+
+  int newPan  = cmd.substring(0, commaIndex).toInt();
+  int newTilt = cmd.substring(commaIndex + 1).toInt();
+
+  // smooth movement (important!)
+  pan  = constrain(newPan,  10, 170);
+  tilt = constrain(newTilt, 10, 160);
+
+  servoPan.write(pan);
+  servoTilt.write(tilt);
 }
