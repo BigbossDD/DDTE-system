@@ -2,6 +2,7 @@
 
 Servo servoPan;
 Servo servoTilt;
+#define LASER_PIN 4
 
 int pan = 70;
 int tilt = 40;
@@ -16,6 +17,9 @@ void setup() {
 
   servoPan.write(pan);
   servoTilt.write(tilt);
+
+  pinMode(LASER_PIN, OUTPUT);
+  digitalWrite(LASER_PIN, LOW);
 }
 
 void loop() {
@@ -32,6 +36,20 @@ void loop() {
 }
 
 void processCommand(String cmd) {
+  cmd.trim();
+
+  // ── LASER COMMANDS ─────────────────────
+  if (cmd == "LON") {
+    digitalWrite(LASER_PIN, HIGH);
+    return;
+  }
+
+  if (cmd == "LOFF") {
+    digitalWrite(LASER_PIN, LOW);
+    return;
+  }
+
+  // ── SERVO COMMAND ──────────────────────
   int commaIndex = cmd.indexOf(',');
 
   if (commaIndex == -1) return;
@@ -39,7 +57,6 @@ void processCommand(String cmd) {
   int newPan  = cmd.substring(0, commaIndex).toInt();
   int newTilt = cmd.substring(commaIndex + 1).toInt();
 
-  // smooth movement (important!)
   pan  = constrain(newPan,  10, 170);
   tilt = constrain(newTilt, 10, 160);
 
